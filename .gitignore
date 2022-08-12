@@ -1,2 +1,4 @@
 data/
 model/
+*.png
+__pycache__/

@@ -7,6 +7,14 @@ from torch.autograd import Variable
 import numpy as np
 from util import *
 
+def get_test_input():
+    img = cv2.imread("dog-cycle-car.png")
+    img = cv2.resize(img, (416,416))          #Resize to the input dimension
+    img_ =  img[:,:,::-1].transpose((2,0,1))  # BGR -> RGB | H X W C -> C X H X W 
+    img_ = img_[np.newaxis,:,:,:]/255.0       #Add a channel at 0 (for batch) | Normalise
+    img_ = torch.from_numpy(img_).float()     #Convert to float
+    img_ = Variable(img_)                     # Convert to Variable
+    return img_
 
 def parse_cfg(cfgfile: str):
     """
@@ -162,26 +170,26 @@ class Darknet(nn.Module):
             if module_type == 'convolutional' or module_type == 'upsample':
                 x = self.module_list[i](x)
 
-            elif module_type == "route":
-                layers = module["layers"]
+            elif module_type == 'route':
+                layers = module['layers']
                 layers = [int(a) for a in layers]
 
-                if (layers[0] > 0):
+                if layers[0] > 0:
                     layers[0] = layers[0] - i
                 
                 if len(layers) == 1:
                     x = outputs[i + (layers[0])]
                 
                 else:
-                    if (layers[1]) > 0:
+                    if layers[1] > 0:
                         layers[1] = layers[1] - i
                     
                     map1 = outputs[i + layers[0]]
                     map2 = outputs[i + layers[1]]
                     x = torch.cat((map1, map2), 1)
             
-            elif module_type == "shortcut":
-                from_ = int(module["from"])
+            elif module_type == 'shortcut':
+                from_ = int(module['from'])
                 x = outputs[i-1] + outputs[i+from_]
             
             elif module_type == 'yolo':
@@ -204,7 +212,11 @@ class Darknet(nn.Module):
         
         return detections
 
-
 if __name__ == '__main__':
-    blocks = parse_cfg('model/cfg/yolov3.cfg')
-    print(create_modules(blocks))
+    # blocks = parse_cfg('model/cfg/yolov3.cfg')
+    # print(create_modules(blocks))
+
+    model = Darknet("cfg/yolov3.cfg")
+    inp = get_test_input()
+    pred = model(inp, torch.cuda.is_available())
+    print (pred)
