@@ -93,8 +93,7 @@ def create_modules(blocks):
                              kernel_size,
                              stride,
                              pad,
-                             bias=bias
-                            )
+                             bias=bias)
             module.add_module(f'conv_{index}', conv)
 
             if batch_normalize:
