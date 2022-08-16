@@ -117,7 +117,7 @@ def write_results(prediction,
     box_corner[:,:,0] = (prediction[:,:,0] - prediction[:,:,2]/2)
     box_corner[:,:,1] = (prediction[:,:,1] - prediction[:,:,3]/2)
     box_corner[:,:,2] = (prediction[:,:,0] + prediction[:,:,2]/2)
-    box_corner[:,:,3] = (prediction[:,:,4] + prediction[:,:,3]/2)
+    box_corner[:,:,3] = (prediction[:,:,1] + prediction[:,:,3]/2)
     prediction[:,:,:4] = box_corner[:,:,:4]
 
     batch_size = prediction.size(0)
@@ -145,8 +145,8 @@ def write_results(prediction,
         img_classes = unique(image_pred_[:,-1])
 
         for cls in img_classes:
-            cls_mask = image_pred_*(image_pred[:,-1] == cls).float().unsqueeze(1)
-            class_mask_ind = torch.nonzero(cls_mask[:,2]).squeeze()
+            cls_mask = image_pred_*(image_pred_[:,-1] == cls).float().unsqueeze(1)
+            class_mask_ind = torch.nonzero(cls_mask[:,-2]).squeeze()
             image_pred_class = image_pred_[class_mask_ind].view(-1,7)
 
             conf_sort_index = torch.sort(image_pred_class[:,4], descending=True)[1]
@@ -156,7 +156,7 @@ def write_results(prediction,
             for i in range(idx):
                 try:
                     ious = bbox_iou(image_pred_class[i].unsqueeze(0), 
-                                    image_pred[i+1:])
+                                    image_pred_class[i+1:])
 
                 except ValueError:
                     break
