@@ -5,11 +5,7 @@ import torchvision.transforms.functional as FT
 
 from tqdm import tqdm
 from torch.utils.data import DataLoader
-
-
-from utils.model import Yolov1
-from utils.loss import YoloLoss
-import utils.data_loader
+from darknet import Darknet
 
 seed = 123
 torch.manual_seed(seed)
@@ -23,13 +19,21 @@ EPOCHS = 100
 NUM_WORKERS = 2
 PIN_MEMORY = True
 LOAD_MODEL = False
-LOAD_MODEL_FILE = 'overfit.pth.tar'
+LOAD_MODEL_FILE = 'yolov3.pt'
 IMG_DIR = 'data/images'
 LABEL_DIR = 'data/labels'
+CFGS_DIR = 'cfg/yolov3.cfg'
 
 
 def main():
-    model = Yolov1(split_size=7, num_boxes=2, num_classes=35).to(DEVICE)
+    # load pretrained model
+    print('Loading network.....')
+    model = Darknet(CFGS_DIR)
+    # model.load_state_dict(torch.load(LOAD_MODEL_FILE))
+    model.load_weights(LOAD_MODEL_FILE)
+    print('Network successfully loaded')
+
+
     '''≈
     optimizer = optim.Adam(
         model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY
@@ -38,7 +42,6 @@ def main():
     optimizer = optim.SGD(
         model.parameters(), lr=LEARNING_RATE, momentum=0.9, weight_decay=WEIGHT_DECAY
     )
-    loss_fn = YoloLoss()
 
     '''
     loading model code

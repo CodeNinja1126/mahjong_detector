@@ -58,6 +58,11 @@ def arg_parse():
                         help='Input resolution of the network. Increase to increase accuracy. Decrease to increase speed',
                         default='416', 
                         type=str)
+    parser.add_argument('--classes',
+                        dest='cls_file',
+                        help='Classes file',
+                        default='data/coco.names',
+                        type=str)
 
     return parser.parse_args()
 
@@ -69,9 +74,8 @@ def main(args):
     start = 0
     CUDA = torch.cuda.is_available()
 
-    num_classes = 80
-    classes = load_classes('data/coco.names')
-
+    classes = load_classes(args.cls_file)
+    num_classes = len(classes)
 
     #set up the neural network
     print('Loading network.....')
