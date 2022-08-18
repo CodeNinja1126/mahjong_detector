@@ -216,7 +216,17 @@ class Darknet(nn.Module):
         모델을 load_state_dict하고 안되면(뒤에 클래스 수가 달라서)
         백본모델의 가중치만 load하고 나머지는 놔둘 것
         '''
-        pass
+        state_dict = torch.load(weightfile)
+        try:
+            self.load_state_dict(state_dict)
+            print('Network successfully loaded')
+        except:
+            print('some layers are not loaded')
+            not_loaded_layer  = self.load_state_dict(state_dict, False)[0]
+            print('not loaded layer:')
+            for name in not_loaded_layer:
+                print(name)
+
 
 if __name__ == '__main__':
     # blocks = parse_cfg('model/cfg/yolov3.cfg')

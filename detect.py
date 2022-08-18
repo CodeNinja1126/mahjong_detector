@@ -80,9 +80,7 @@ def main(args):
     #set up the neural network
     print('Loading network.....')
     model = Darknet(args.cfgfile)
-    model.load_state_dict(torch.load(args.weightsfile))
-    # model.load_weights(args.weightsfile)
-    print('Network successfully loaded')
+    model.load_weights(args.weightsfile)
 
     model.net_info['height'] = args.reso
     inp_dim = int(model.net_info['height'])

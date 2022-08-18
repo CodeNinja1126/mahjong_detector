@@ -24,7 +24,6 @@ IMG_DIR = 'data/images'
 LABEL_DIR = 'data/labels'
 CFGS_DIR = 'cfg/yolov3.cfg'
 
-
 def main():
     # load pretrained model
     print('Loading network.....')
