@@ -2,6 +2,8 @@ import torch
 import torchvision.transforms as transforms
 import torch.optim as optim
 import torchvision.transforms.functional as FT
+import torch.nn as nn
+import torch.nn.functional as F
 
 from tqdm import tqdm
 from torch.utils.data import DataLoader
@@ -23,6 +25,37 @@ LOAD_MODEL_FILE = 'yolov3.pt'
 IMG_DIR = 'data/images'
 LABEL_DIR = 'data/labels'
 CFGS_DIR = 'cfg/yolov3.cfg'
+
+
+class yolo_loss(nn.Module):
+    def __init__(self, 
+                 B,
+                 S,
+                 C,
+                 lambda_coord = 1.0,
+                 lambda_conf_obj = 5.0,
+                 lambda_conf_noobj = 0.5):
+        self.B = B
+        self.S = S
+        self.C = C
+        self.lambda_coord = lambda_coord
+        self.lambda_conf_obj = lambda_conf_obj
+        self.lambda_conf_noobj = lambda_conf_noobj
+
+
+    def forward(self, x, y):
+        '''
+        (batch_size, num_bboxe, 4(coord)+1(confidence)+num_classes)
+        '''
+        one_obj = y[:,:,5]
+        one_noobj = y[:,:,5].logical_not().float()
+        coord_loss = self.lambda_coord * F.l1_loss(one_obj * x[:,:,:4], y[:,:,:4], reduction=sum)
+        confidence_loss = self.lambda_conf_obj * F.mse_loss(y[:,:,5] * x[:,:,5], y[:,:,5], reducetion=sum) +\
+                          self.lambda_conf_noobj * F.mse_loss(one_noobj * x[:,:,5], y[:,:,5], reducetion=sum)
+        classifier_loss = F.binary_cross_entropy(one_obj * x[:,:,6:], y[:,:,6:], reduction=sum)
+
+        return coord_loss + confidence_loss + classifier_loss
+
 
 def main():
     # load pretrained model

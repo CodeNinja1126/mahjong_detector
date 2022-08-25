@@ -153,10 +153,11 @@ def create_modules(blocks):
 
 
 class Darknet(nn.Module):
-    def __init__(self, cfgfile):
+    def __init__(self, cfgfile, is_training=False):
         super(Darknet, self).__init__()
         self.blocks = parse_cfg(cfgfile)
         self.net_info, self.module_list = create_modules(self.blocks)
+        self.is_training = is_training
     
     def forward(self, x, CUDA):
         modules = self.blocks[1:]
@@ -199,7 +200,7 @@ class Darknet(nn.Module):
                 num_classes = int(module["classes"])
 
                 x = x.data
-                x = predict_transform(x, inp_dim, anchors, num_classes, CUDA)
+                x = predict_transform(x, inp_dim, anchors, num_classes, CUDA, self.is_training)
                 if not write:
                     detections = x
                     write = 1

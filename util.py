@@ -41,7 +41,8 @@ def predict_transform(prediction:torch.tensor,
                       inp_dim:int, 
                       anchors:list, 
                       num_classes:int, 
-                      CUDA = True):
+                      CUDA = True,
+                      is_training = False):
     """transform prediction to 2-D tensor 
 
     Args:
@@ -66,41 +67,42 @@ def predict_transform(prediction:torch.tensor,
                                  grid_size * grid_size * num_anchors,
                                  bbox_attrs)
     anchors = [(a[0]/stride, a[1]/stride) for a in anchors]
+    if is_training == True:
+        pass
+    else:
+        # Sigmoid the centre_X, centre_Y. and object confidence
+        prediction[:,:,0] = torch.sigmoid(prediction[:,:,0])
+        prediction[:,:,1] = torch.sigmoid(prediction[:,:,1])
+        prediction[:,:,4] = torch.sigmoid(prediction[:,:,4])
 
-    # Sigmoid the centre_X, centre_Y. and object confidence
-    prediction[:,:,0] = torch.sigmoid(prediction[:,:,0])
-    prediction[:,:,1] = torch.sigmoid(prediction[:,:,1])
-    prediction[:,:,4] = torch.sigmoid(prediction[:,:,4])
+        grid = np.arange(grid_size)
+        a, b = np.meshgrid(grid, grid)
 
-    grid = np.arange(grid_size)
-    a, b = np.meshgrid(grid, grid)
+        x_offset = torch.FloatTensor(a).view(-1,1)
+        y_offset = torch.FloatTensor(b).view(-1,1)
 
-    x_offset = torch.FloatTensor(a).view(-1,1)
-    y_offset = torch.FloatTensor(b).view(-1,1)
+        if CUDA:
+            x_offset = x_offset.cuda()
+            y_offset = y_offset.cuda()
+        
+        x_y_offset = torch.cat((x_offset, y_offset), 1). \
+                        repeat(1,num_anchors). \
+                        view(-1,2). \
+                        unsqueeze(0)
+        
+        prediction[:,:,:2] += x_y_offset
 
-    if CUDA:
-        x_offset = x_offset.cuda()
-        y_offset = y_offset.cuda()
-    
-    x_y_offset = torch.cat((x_offset, y_offset), 1). \
-                       repeat(1,num_anchors). \
-                       view(-1,2). \
-                       unsqueeze(0)
-    
-    prediction[:,:,:2] += x_y_offset
+        anchors = torch.FloatTensor(anchors)
 
-    anchors = torch.FloatTensor(anchors)
-
-    if CUDA:
-        anchors = anchors.cuda()
-    
-    # log space transform height and the width
-    anchors = anchors.repeat(grid_size*grid_size, 1).unsqueeze(0)
-    prediction[:,:,2:4] = torch.exp(prediction[:,:,2:4])*anchors
+        if CUDA:
+            anchors = anchors.cuda()
+        
+        # log space transform height and the width
+        anchors = anchors.repeat(grid_size*grid_size, 1).unsqueeze(0)
+        prediction[:,:,2:4] = torch.exp(prediction[:,:,2:4])*anchors
+        prediction[:,:,:4] *= stride
 
     prediction[:,:,5:5+num_classes] = torch.sigmoid((prediction[:,:,5:5+num_classes]))
-
-    prediction[:,:,:4] *= stride
 
     return prediction
 
