@@ -153,11 +153,10 @@ def create_modules(blocks):
 
 
 class Darknet(nn.Module):
-    def __init__(self, cfgfile, is_training=False):
+    def __init__(self, cfgfile):
         super(Darknet, self).__init__()
         self.blocks = parse_cfg(cfgfile)
         self.net_info, self.module_list = create_modules(self.blocks)
-        self.is_training = is_training
     
     def forward(self, x, CUDA):
         modules = self.blocks[1:]
@@ -200,17 +199,28 @@ class Darknet(nn.Module):
                 num_classes = int(module["classes"])
 
                 x = x.data
-                x = predict_transform(x, inp_dim, anchors, num_classes, CUDA, self.is_training)
-                if not write:
-                    detections = x
-                    write = 1
-                
+                x = predict_transform(x, inp_dim, anchors, num_classes, CUDA, self.training)
+                if self.training:
+                    x, x_train = x
+                    if not write:
+                        detections = x
+                        coord_to_train = x_train
+                        write = 1
+                    else:
+                        detections = torch.cat((detections, x), 1)
+                        coord_to_train = torch.cat((coord_to_train, x_train), 1)
                 else:
-                    detections = torch.cat((detections, x), 1)
+                    if not write:
+                        detections = x
+                        write = 1
+                    else:
+                        detections = torch.cat((detections, x), 1)
             
             outputs[i] = x
-        
-        return detections
+        if self.training:
+            return detections, coord_to_train
+        else:
+            return detections
     
     def load_weights(self, weightfile):
         '''
@@ -223,10 +233,10 @@ class Darknet(nn.Module):
             print('Network successfully loaded')
         except:
             print('some layers are not loaded')
-            not_loaded_layer  = self.load_state_dict(state_dict, False)[0]
-            print('not loaded layer:')
-            for name in not_loaded_layer:
-                print(name)
+            msg = self.mismatch_load_state_dict(state_dict)
+            for line in msg:
+                print(line)
+    
 
 
 if __name__ == '__main__':
@@ -234,6 +244,7 @@ if __name__ == '__main__':
     # print(create_modules(blocks))
 
     model = Darknet("cfg/yolov3.cfg")
+    model.eval()
     inp = get_test_input()
     pred = model(inp, torch.cuda.is_available())
     print (pred)

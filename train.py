@@ -1,113 +1,159 @@
+import argparse
+from tqdm import tqdm
+
 import torch
-import torchvision.transforms as transforms
 import torch.optim as optim
-import torchvision.transforms.functional as FT
 import torch.nn as nn
 import torch.nn.functional as F
-
-from tqdm import tqdm
 from torch.utils.data import DataLoader
+
+from util import *
+from data import Yolo_v3_dataset
+from loss import yolo_loss
 from darknet import Darknet
+
 
 seed = 123
 torch.manual_seed(seed)
 
-LEARNING_RATE = 1e-3
+LEARNING_RATE = 5e-4
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
-BATCH_SIZE = 64 # 64 in original paper
+BATCH_SIZE = 32 # 64 in original paper
 WEIGHT_DECAY = 0.0005
 MOMENTUM = 0.9
 EPOCHS = 100
-NUM_WORKERS = 2
+NUM_WORKERS = 4
 PIN_MEMORY = True
 LOAD_MODEL = False
 LOAD_MODEL_FILE = 'yolov3.pt'
-IMG_DIR = 'data/images'
-LABEL_DIR = 'data/labels'
-CFGS_DIR = 'cfg/yolov3.cfg'
+# IMG_DIR = 'data/images'
+# LABEL_DIR = 'data/labels'
+# CFGS_DIR = 'cfg/yolov3.cfg'
 
+def arg_parse():
+    parser = argparse.ArgumentParser(description='YOLO v3 Train Module')
 
-class yolo_loss(nn.Module):
-    def __init__(self, 
-                 B,
-                 S,
-                 C,
-                 lambda_coord = 1.0,
-                 lambda_conf_obj = 5.0,
-                 lambda_conf_noobj = 0.5):
-        self.B = B
-        self.S = S
-        self.C = C
-        self.lambda_coord = lambda_coord
-        self.lambda_conf_obj = lambda_conf_obj
-        self.lambda_conf_noobj = lambda_conf_noobj
+    parser.add_argument('--data', 
+                        dest='data',
+                        help='data directory', 
+                        type=str)
+    parser.add_argument('--bs', 
+                        dest='bs',
+                        help='Batch size',
+                        default=32, 
+                        type=int)
+    parser.add_argument('--confidence', 
+                        dest='confidence',
+                        help='Object Confidence to filter predictions',
+                        default=0.5, 
+                        type=float)
+    parser.add_argument('--nms_thresh', 
+                        dest='nms_thresh',
+                        help='NMS Threshold',
+                        default=0.4, 
+                        type=float)
+    parser.add_argument('--cfg', 
+                        dest='cfgfile',
+                        help='Config file',
+                        default='cfg/yolov3_mahjong.cfg', 
+                        type=str)
+    parser.add_argument('--weights', 
+                        dest='weightsfile',
+                        help='weightsfile',
+                        default='yolov3.pt', 
+                        type=str)
+    parser.add_argument('--reso', 
+                        dest='reso',
+                        help='Input resolution of the network. Increase to increase accuracy. Decrease to increase speed',
+                        default='416', 
+                        type=str)
+    parser.add_argument('--classes',
+                        dest='cls_file',
+                        help='Classes file',
+                        default='data/coco.names',
+                        type=str)
 
+    return parser.parse_args()
 
-    def forward(self, x, y):
-        '''
-        (batch_size, num_bboxe, 4(coord)+1(confidence)+num_classes)
-        '''
-        one_obj = y[:,:,5]
-        one_noobj = y[:,:,5].logical_not().float()
-        coord_loss = self.lambda_coord * F.l1_loss(one_obj * x[:,:,:4], y[:,:,:4], reduction=sum)
-        confidence_loss = self.lambda_conf_obj * F.mse_loss(y[:,:,5] * x[:,:,5], y[:,:,5], reducetion=sum) +\
-                          self.lambda_conf_noobj * F.mse_loss(one_noobj * x[:,:,5], y[:,:,5], reducetion=sum)
-        classifier_loss = F.binary_cross_entropy(one_obj * x[:,:,6:], y[:,:,6:], reduction=sum)
-
-        return coord_loss + confidence_loss + classifier_loss
 
 
 def main():
+    args = arg_parse()
+    CUDA = torch.cuda.is_available()
+    
     # load pretrained model
     print('Loading network.....')
-    model = Darknet(CFGS_DIR)
-    # model.load_state_dict(torch.load(LOAD_MODEL_FILE))
-    model.load_weights(LOAD_MODEL_FILE)
+    model = Darknet(args.cfgfile)
+    model.load_weights(args.weightsfile)
     print('Network successfully loaded')
 
+    # read grid sizes and anchors
+    grid_sizes = tuple(map(float, model.net_info['grid_sizes'].split(',')))
+    grid_sizes = torch.tensor(grid_sizes)
+    
+    anchors = tuple(map(float, model.net_info['anchors'].split(',')))
+    anchors = [(anchors[i], anchors[i+1]) for i in range(0,len(anchors),2)]
+    anchors = [(anchors[i], anchors[i+1], anchors[i+2]) for i in range(0,len(anchors),3)]
+    anchors = torch.tensor(anchors)
+    
+    inp_dim = int(model.net_info['height'])
 
-    '''≈
-    optimizer = optim.Adam(
-        model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY
-    )
-    '''
+    if CUDA:
+        model = model.cuda()
+        anchors = anchors.cuda()
+        grid_sizes = grid_sizes.cuda()
+
+    # loss
+    criterion = yolo_loss(anchors,
+                          grid_sizes,
+                          inp_dim,
+                          CUDA=CUDA)
+
     optimizer = optim.SGD(
         model.parameters(), lr=LEARNING_RATE, momentum=0.9, weight_decay=WEIGHT_DECAY
     )
 
-    '''
-    loading model code
-    if LOAD_MODEL:
-        load_checkpoint(torch.load(LOAD_MODEL_FILE), model, optimizer)
-    '''
-
-    '''
-    data_set and data_loader code
-    train_dataset = VOCDataset(
-        "data/train.csv",
-        transform=transform,
-        img_dir=IMG_DIR,
-        label_dir=LABEL_DIR,
-    )
+    train_dataset = Yolo_v3_dataset(args.data, inp_dim)
+    data_loader = DataLoader(train_dataset, 
+                             batch_size=32, 
+                             shuffle=True, 
+                             num_workers=4, 
+                             pin_memory=True, 
+                             drop_last=True
+                            )
     
-    test_dataset = VOCDataset(
-        'data/test.csv',
-        transform=transform,
-        img_dir=IMG_DIR,
-        label_dir=LABEL_DIR
+    model.train()
 
-    )
+    for epoch in range(EPOCHS):
+        for batch in data_loader:
+            inp, idx = batch
 
-    train_loader = DataLoader(
-        dataset=train_dataset,
-        batch_size=BATCH_SIZE,
-        num_workers=NUM_WORKERS,
-        pin_memory=PIN_MEMORY,
-        shuffle=True,
-        drop_last=True,
-    )
-    '''
+            cls_label = []
+            coord_label = []
+            for i in idx:
+                label = train_dataset.get_label(i)
+                cls_label.append([a[0] for a in label])
+                coord_label.append([torch.tensor(a[1]).cuda() if CUDA else torch.tensor(a[1]) for a in label])
 
+            if CUDA:
+                x = inp.cuda()
+                coord_label = coord_label.cuda()
+            
+            optimizer.zero_grad()
+
+            x = model(x, CUDA)
+            loss = criterion(x[0], x[1], cls_label, coord_label)
+            loss.backward()
+            optimizer.step()
+
+            running_loss += loss.item()
+
+        if epoch % 10 == 9:    # print every 10 epoch
+            print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 10:.3f}')
+            running_loss = 0.0
+    
+    ckpt = model.state_dict()
+    torch.save(ckpt, 'yolov3_mahjong.pt')
 
 if __name__ == '__main__':
     main()
