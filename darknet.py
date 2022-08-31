@@ -199,8 +199,8 @@ class Darknet(nn.Module):
                 inp_dim = int(self.net_info["height"])
                 
                 num_classes = int(module["classes"])
-
-                x = x.data
+                if not self.training:
+                    x = x.data
                 x = predict_transform(x, inp_dim, anchors, num_classes, CUDA, self.training)
                 if self.training:
                     x, x_train = x

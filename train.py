@@ -16,7 +16,7 @@ from darknet import Darknet
 seed = 123
 torch.manual_seed(seed)
 
-LEARNING_RATE = 5e-4
+LEARNING_RATE = 5e-6
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 BATCH_SIZE = 32 # 64 in original paper
 WEIGHT_DECAY = 0.0005
@@ -124,6 +124,7 @@ def main():
     
     model.train()
 
+    running_loss = 0.0
     for epoch in range(EPOCHS):
         for batch in data_loader:
             inp, idx = batch
@@ -133,11 +134,14 @@ def main():
             for i in idx:
                 label = train_dataset.get_label(i)
                 cls_label.append([a[0] for a in label])
-                coord_label.append([torch.tensor(a[1]).cuda() if CUDA else torch.tensor(a[1]) for a in label])
+                tmp_coord = [torch.tensor(a[1]).float() for a in label]
+                if CUDA:
+                    tmp_coord = [a.cuda() for a in tmp_coord]
+                coord_label.append(tmp_coord)
             
-            inp = inp.squeeze(1)
+            x = inp.squeeze(1)
             if CUDA:
-                x = inp.cuda()
+                x = x.cuda()
             
             optimizer.zero_grad()
 
@@ -145,11 +149,10 @@ def main():
             loss = criterion(x[0], x[1], cls_label, coord_label)
             loss.backward()
             optimizer.step()
-
             running_loss += loss.item()
 
         if epoch % 10 == 9:    # print every 10 epoch
-            print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 10:.3f}')
+            print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 30:.3f}')
             running_loss = 0.0
     
     ckpt = model.state_dict()
