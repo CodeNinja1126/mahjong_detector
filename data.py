@@ -35,26 +35,25 @@ class Yolo_v3_dataset(Dataset):
                  inp_dim,
                  transform=transform, 
                  target_transform=target_transform):
-        self.img_dir = osp.join(data_dir, 'images/')
+        img_dir = osp.join(data_dir, 'images/')
         self.label_dir = osp.join(data_dir, 'labelling/')
-        self.inp_dim = inp_dim
         try:
-            self.img_names = [name for name in os.listdir(self.img_dir) if name[-4:] == 'jpeg']
+            self.img_names = [name for name in os.listdir(img_dir) if name[-4:] == 'jpeg']
         except NotADirectoryError:
             print(f'Incorrect data dir.')
             exit()
             
         self.img_names.sort()
-        self.transform = transform
+        tmp_list = [osp.join(img_dir, name) for name in self.img_names]
+        self.img_list = [transform(img, inp_dim) for img in tmp_list]
+
         self.target_transform = target_transform
 
     def __len__(self):
-        return len(self.img_names)
+        return len(self.img_list)
 
     def __getitem__(self, idx):
-        img_path = osp.join(self.img_dir, self.img_names[idx])
-        image = self.transform(img_path, self.inp_dim)
-        return (image, idx)
+        return (self.img_list[idx], idx)
 
     def get_label(self, idx):
         label = osp.join(self.label_dir, self.img_names[idx][:-4]+'txt')
