@@ -7,3 +7,4 @@ det/
 *.pt
 __pycache__/
 .vscode/
+.DS_store
