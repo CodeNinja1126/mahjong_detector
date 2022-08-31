@@ -72,6 +72,16 @@ def arg_parse():
                         help='Classes file',
                         default='data/coco.names',
                         type=str)
+    parser.add_argument('--epoch',
+                        dest='epoch',
+                        help='num epochs',
+                        default=100,
+                        type=int)
+    parser.add_argument('--lr',
+                        dest='lr',
+                        help='learning_rate',
+                        default=5e-6,
+                        type=float)
 
     return parser.parse_args()
 
@@ -110,12 +120,12 @@ def main():
                           CUDA=CUDA)
 
     optimizer = optim.SGD(
-        model.parameters(), lr=LEARNING_RATE, momentum=0.9, weight_decay=WEIGHT_DECAY
+        model.parameters(), lr=args.lr, momentum=0.9, weight_decay=WEIGHT_DECAY
     )
 
     train_dataset = Yolo_v3_dataset(args.data, inp_dim)
     data_loader = DataLoader(train_dataset, 
-                             batch_size=32, 
+                             batch_size=args.bs, 
                              shuffle=True, 
                              num_workers=4, 
                              pin_memory=True, 
@@ -125,7 +135,7 @@ def main():
     model.train()
 
     running_loss = 0.0
-    for epoch in range(EPOCHS):
+    for epoch in range(args.epoch):
         for batch in data_loader:
             inp, idx = batch
 
@@ -154,7 +164,9 @@ def main():
         if epoch % 10 == 9:    # print every 10 epoch
             print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 30:.3f}')
             running_loss = 0.0
-    
+            
+        torch.cuda.empty_cache()
+
     ckpt = model.state_dict()
     torch.save(ckpt, 'yolov3_mahjong.pt')
 

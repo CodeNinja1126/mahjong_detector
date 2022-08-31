@@ -229,7 +229,7 @@ class Darknet(nn.Module):
         모델을 load_state_dict하고 안되면(뒤에 클래스 수가 달라서)
         백본모델의 가중치만 load하고 나머지는 놔둘 것
         '''
-        state_dict = torch.load(weightfile)
+        state_dict = torch.load(weightfile, map_location=torch.device('cpu'))
         try:
             self.load_state_dict(state_dict)
             print('Network successfully loaded')

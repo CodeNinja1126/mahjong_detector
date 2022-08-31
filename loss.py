@@ -49,7 +49,7 @@ class yolo_loss(nn.Module):
                 candis = []
                 base_idx = 0
                 for g in self.grid_sizes:
-                    tmp_idx = base_idx + ((box[1] * g // 1.0) + (box[0] * g // 1.0) * g) * len(self.anchors[0])
+                    tmp_idx = base_idx + ((box[1] * g // 1.0) * g + (box[0] * g // 1.0)) * len(self.anchors[0])
                     tmp_idx = int(tmp_idx)
                     candis += list(range(tmp_idx, tmp_idx+len(self.anchors[0])))
                     base_idx += g ** 2 * 3
