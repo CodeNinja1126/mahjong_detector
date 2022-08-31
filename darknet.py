@@ -1,5 +1,7 @@
 from __future__ import division
 
+from collections import OrderedDict
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -237,6 +239,26 @@ class Darknet(nn.Module):
             for line in msg:
                 print(line)
     
+    def mismatch_load_state_dict(self, state_dict: OrderedDict) -> list:
+        model_state_dict = self.state_dict()
+        is_changed = False
+        msg = []
+        for k in state_dict:
+            if k in model_state_dict:
+                if state_dict[k].shape != model_state_dict[k].shape:
+                    msg.extend([f"Skip loading parameter: {k}, ",
+                                f"required shape: {model_state_dict[k].shape}, ",
+                                f"loaded shape: {state_dict[k].shape}"])
+                    state_dict[k] = model_state_dict[k]
+                    is_changed = True
+            else:
+                msg.append(f"Dropping parameter {k}")
+                is_changed = True
+
+        if is_changed:
+            return msg
+        else:
+            return None
 
 
 if __name__ == '__main__':

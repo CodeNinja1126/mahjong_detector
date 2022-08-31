@@ -134,10 +134,10 @@ def main():
                 label = train_dataset.get_label(i)
                 cls_label.append([a[0] for a in label])
                 coord_label.append([torch.tensor(a[1]).cuda() if CUDA else torch.tensor(a[1]) for a in label])
-
+            
+            inp = inp.squeeze(1)
             if CUDA:
                 x = inp.cuda()
-                coord_label = coord_label.cuda()
             
             optimizer.zero_grad()
 
