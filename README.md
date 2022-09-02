@@ -21,10 +21,15 @@
         - 꽃 패, 인식 안 되는 패 등등...
 # 개요
 ## YOLO v3
-- yolo v3 416 모델을 사용했습니다. coco dataset에 학습시킨 모델을 이용해 classifier를 바꾸고 마작 데이터에 fine_tuning시켰습니다.
+- yolo v3 416 모델을 사용했습니다. coco dataset에 학습시킨 모델을 이용해 classifier를 바꾸고 마작 데이터에 fine tuning했습니다.
 - https://github.com/ayooshkathuria/YOLO_v3_tutorial_from_scratch 위 repo를 기반으로 학습과 loss함수를 구현하였습니다.
 
-# 진행 상황
-<img src = "https://user-images.githubusercontent.com/56903243/188042920-fbe9943e-468c-4426-8f26-ef485f9ee74f.jpeg  width="50" height="50">
-![det_0114](https://user-images.githubusercontent.com/56903243/188042920-fbe9943e-468c-4426-8f26-ef485f9ee74f.jpeg)
-![det_0100](https://user-images.githubusercontent.com/56903243/188042932-b57c558a-fdaf-4a1d-b1a5-885075b2648e.jpeg)
+## 진행 상황
+
+<img src ="https://user-images.githubusercontent.com/56903243/188042920-fbe9943e-468c-4426-8f26-ef485f9ee74f.jpeg" width="50%" height="50%"/>
+<img src ="https://user-images.githubusercontent.com/56903243/188042932-b57c558a-fdaf-4a1d-b1a5-885075b2648e.jpeg" width="50%" height="50%"/>
+
+- 약 100장 정도의 데이터로 학습을 수행한 결과입니다.
+- 적은 데이터로도 높은 분류 성능을 확인할 수 있었습니다.
+- 적은 데이터로도 그럴듯하게 bounding box들을 위치시켰지만 아직 개선의 여지가 있어보입니다.
+- 이후 데이터를 증가시키고, 하이퍼 파라미터 튜닝, augmentation, 등의 기술들을 시도해 성능을 향상시킬 예정입니다.
