@@ -135,6 +135,8 @@ def main():
     model.train()
 
     running_loss = 0.0
+    g_step = 0
+    step = 0
     for epoch in range(args.epoch):
         for batch in data_loader:
             inp, idx = batch
@@ -160,9 +162,12 @@ def main():
             loss.backward()
             optimizer.step()
             running_loss += loss.item()
+            step += 1
 
         if epoch % 10 == 9:    # print every 10 epoch
-            print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 30:.3f}')
+            g_step += step
+            print(f'[{epoch + 1}, {g_step + 1:5d}] loss: {running_loss / step:.3f}')
+            step = 0
             running_loss = 0.0
             
         torch.cuda.empty_cache()
