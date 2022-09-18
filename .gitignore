@@ -8,3 +8,4 @@ det/
 __pycache__/
 .vscode/
 .DS_store
+.ipynb_checkpoints
